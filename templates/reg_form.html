@@ -1,0 +1,30 @@
+{% extends 'head.html' %}
+{% block Title %} Регистрация {% endblock %}
+{% block Body %}
+<body class="text-center">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/signin.css') }}">
+    <main class="form-signin">
+        <form method="post">
+            <img class="mb-4" src="{{ url_for('static', filename='img/logo.jpeg') }}" alt="" width="72" height="72">
+            <h1 class="h3 mb-3 fw-normal">Зарегистрируйтесь</h1>
+
+            <div class="form-floating">
+                <input type="email" class="form-control" style="width: 100%" id="floatingInput" placeholder="name@example.com">
+                <label for="floatingInput">Электронная почта</label>
+            </div>
+            <div class="form-floating">
+                <input type="password" class="form-control" style="width: 100%" id="floatingPassword" placeholder="Password">
+                <label for="floatingPassword">Пароль</label>
+            </div>
+
+            <div class="checkbox mb-3">
+                <label>
+                    <input type="checkbox" value="remember-me"> Просто галочка
+                </label>
+            </div>
+            <button class="w-100 btn btn-lg btn-primary" type="submit">Зарегистрироваться</button>
+            <p class="mt-5 mb-3 text-muted"></p>
+        </form>
+    </main>
+</body>
+{% endblock %}
