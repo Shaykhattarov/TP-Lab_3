@@ -19,11 +19,17 @@
             <img src="{{ url_for('static', filename='avatar/ЭтоЯ.jfif') }}" alt="mdo" width="40" height="40" class="rounded-circle">
           </a>
           <ul class="dropdown-menu text-small" aria-labelledby="dropdownUser1" style="">
-            <li><a class="dropdown-item" href="#">New project...</a></li>
-            <li><a class="dropdown-item" href="#">Settings</a></li>
-            <li><a class="dropdown-item" href="#">Profile</a></li>
+            <li><a class="dropdown-item" href="#">Настройки</a></li>
+            <li><a class="dropdown-item" href="/profile/">Личный кабинет</a></li>
             <li><hr class="dropdown-divider"></li>
-            <li><a class="dropdown-item" href="/auth">Sign In</a></li>
+            {% if current_user.is_authenticated: %}
+            <li><a class="dropdown-item" href="/logout/">Выйти</a></li>
+            {% else: %}
+            <li><a class="dropdown-item" href="/login/">Авторизоваться</a></li>
+            {% endif %}
+            {% if not current_user.is_authenticated: %}
+            <li><a class="dropdown-item" href="/reg">Зарегистрироваться</a></li>
+            {% endif %}
           </ul>
         </div>
       </div>
