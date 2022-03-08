@@ -3,7 +3,7 @@ import json
 import os
 import uuid
 from datetime import datetime as dt
-from forms import LoginForm, CreateUserForm
+from forms import LoginForm, CreateUserForm, ChangeUserForm, SelectUserForm
 from yapi import YaAPI as yap
 
 from flask_wtf.csrf import CSRFProtect
@@ -55,6 +55,16 @@ class News(db.Model):
         return f'<news {self.news_id}>'
 
 
+class User_info:
+    id = 3
+    name = "admin"
+    surname = "admin"
+    login = "admin@admin.ru"
+    password = "root"
+    old = "0"
+    work = "admin"
+
+
 @app.route('/')
 @app.route('/home')
 def index():
@@ -104,17 +114,148 @@ def check_password(hashed_password, user_password):
     return password == hashlib.sha256(salt.encode() + user_password.encode()).hexdigest()
 
 
-@app.route('/admin/')
+@app.route('/admin/', methods=['get', 'post'])
 @login_required
 def admin():
-    if current_user.user_email == "admin@admin.ru" and current_user.user_password == "admin":
-        pass
-    else: return redirect(url_for('registration'))
+    if current_user.user_email != "admin@admin.ru" and current_user.user_password != "admin":
+        return redirect(url_for('registration'))
+    user_id = request.args.get('user_id')
+    form = ChangeUserForm()
+    message = ""
+    try:
+        user_response = db.session.query(User).filter(User.user_id == user_id).one()
+    except Exception as e:
+        print(e)
+    else:
+        user_info = User_info()
+        user_info.id = user_response.user_id
+        user_info.name = user_response.user_name
+        user_info.surname = user_response.user_surname
+        user_info.login = user_response.user_email
+        user_info.old = user_response.user_old
+        user_info.work = user_response.user_work
+
+    if request.method == 'POST':
+        data = dict({
+            'name': user_info.name,
+            'surname': user_info.surname,
+            'login': user_info.login,
+            'old': user_info.old,
+            'work': user_info.work
+        })
+        new_data = dict({
+            'name': form.name.data,
+            'surname': form.surname.data,
+            'login': form.email.data,
+            'old': form.old.data,
+            'work': form.work.data
+        })
+        if new_data['name'] and new_data['name'] != data['name']:
+            data['name'] = new_data['name']
+        if new_data['surname'] and new_data['surname'] != data['surname']:
+            data['surname'] = new_data['surname']
+        if new_data['login'] and new_data['login'] != data['login']:
+            data['login'] = new_data['login']
+        if new_data['old'] and new_data['old'] != data['old']:
+            data['old'] = new_data['old']
+        if new_data['work'] and new_data['work'] != data['work']:
+            data['work'] = new_data['work']
+
+        try:
+            update_query = db.session.query(User).filter(User.user_id == user_id).update({User.user_name: data['name'], User.user_surname: data['surname']}, synchronize_session=False)
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            message = "Изменение данных в бд прошло с ошибкой!"
+            print(e)
+        else:
+            return redirect(url_for('admin', user_id=user_id))
+
+    return render_template('admin.html', form=form, message=message, data=user_info)
 
 
-@app.route('/profile/')
+@app.route('/admin-choice/', methods=['get', 'post'])
+def admin_choice():
+    if current_user.user_email != "admin@admin.ru" and current_user.user_password != "admin":
+        return redirect(url_for('registration'))
+    select_form = SelectUserForm()
+    list_data = list()
+    user_id = 3
+    users = db.session.query(User).order_by(User.user_id).all()
+    for i in range(len(users)):
+        list_data.append((str(users[i].user_id), users[i].user_email))
+    select_form.id.default = ['3']
+    select_form.id.choices = list_data
+    if request.method == "POST":
+        print(int(select_form.id.data[0]))
+        user_id = int(select_form.id.data[0])
+        return redirect(url_for('admin', user_id=user_id))
+    return render_template('admin_choice_form.html', select_form=select_form)
+
+
+@app.route('/profile/', methods=['get', 'post'])
+@login_required
 def profile():
-    pass
+    if not current_user.is_authenticated:
+        return redirect('login')
+    form = ChangeUserForm()
+    message = ""
+    if request.method == 'POST':
+        data = dict({
+            'name': current_user.user_name,
+            'surname': current_user.user_surname,
+            'login': current_user.user_email,
+            'password': current_user.user_password,
+            'old': current_user.user_old,
+            'work': current_user.user_work
+        })
+
+        new_data = dict({
+            'name': form.name.data,
+            'surname': form.surname.data,
+            'login': form.email.data,
+            'password': form.password.data,
+            'confirm_password': form.confirm_password.data,
+            'old': form.old.data,
+            'work': form.work.data
+        })
+        user = db.session.query(User).filter_by(user_id=current_user.user_id).one()
+        if new_data['name'] and new_data['name'] != data['name']:
+            data['name'] = new_data['name']
+        if new_data['surname'] and new_data['surname'] != data['surname']:
+            data['surname'] = new_data['name']
+        if new_data['login'] and new_data['login'] != data['login']:
+            data['login'] = new_data['login']
+        if new_data['old'] and new_data['old'] != data['old']:
+            data['old'] = new_data['old']
+        if new_data['work'] and new_data['work'] != data['work']:
+            data['work'] = new_data['work']
+        if not check_password(data['password'], new_data['password']) and new_data['password'] == new_data['confirm_password']:
+            data['password'] = hash_password(new_data['password'])
+
+        user.user_name = data['name']
+        user.user_surname = data['surname']
+        user.user_email = data['login']
+        user.user_password = data['password']
+        user.user_old = data['old']
+        user.user_work = data['work']
+
+        try:
+            db.session.add(user)
+            db.session.commit()
+        except Exception as e:
+            message = "Изменение данных в бд прошло с ошибкой!"
+            print(e)
+        else:
+            current_user.user_name = data['name']
+            current_user.user_surname = data['surname']
+            current_user.user_email = data['login']
+            current_user.user_password = data['password']
+            current_user.user_old = data['old']
+            current_user.user_work = data['work']
+            return redirect('/profile/')
+
+    return render_template('profile.html', form=form, message=message)
 
 
 @app.route('/login/', methods=['post', 'get'])
@@ -128,9 +269,9 @@ def login():
         user = db.session.query(User).filter(User.user_email == login).first()
         if check_password(user.user_password, form.password.data):
             login_user(user)
-            return success()
+            return redirect(url_for('index'))
         else:
-            return failed()
+            return redirect(url_for('login'))
     return render_template('auth_form.html', form=form, message=message)
 
 
@@ -167,7 +308,7 @@ def registration():
         except Exception as e:
             print(e)
         else:
-            return redirect(url_for('auth_form'))
+            return redirect(url_for('login'))
     return render_template('reg_form.html', form=form, message=message)
 
 
@@ -177,16 +318,6 @@ def logout():
     logout_user()
     flash("You have been logged out.")
     return redirect(url_for('login'))
-
-
-def success():
-    print("Успешно")
-    return redirect(url_for('index'))
-
-
-def failed():
-    print("Провал")
-    return redirect(url_for('auth_form'))
 
 
 if __name__ == "__main__":
