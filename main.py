@@ -55,6 +55,16 @@ class News(db.Model):
         return f'<news {self.news_id}>'
 
 
+class News_obj:
+    id = 0
+    title = ""
+    intro = ""
+    text = ""
+    author = ""
+    life = ""
+    date = ""
+
+
 class User_info:
     id = 3
     name = "admin"
@@ -266,12 +276,16 @@ def login():
     message = ""
     if request.method == 'POST':
         login = form.email.data
-        user = db.session.query(User).filter(User.user_email == login).first()
-        if check_password(user.user_password, form.password.data):
-            login_user(user)
-            return redirect(url_for('index'))
+        try:
+            user = db.session.query(User).filter(User.user_email == login).one()
+        except Exception as e:
+            message = "Пользователь не найден!"
         else:
-            return redirect(url_for('login'))
+            if user.user_password is not None and check_password(user.user_password, form.password.data):
+                login_user(user)
+                return redirect(url_for('index'))
+            else:
+                return redirect(url_for('login'))
     return render_template('auth_form.html', form=form, message=message)
 
 
@@ -318,6 +332,24 @@ def logout():
     logout_user()
     flash("You have been logged out.")
     return redirect(url_for('login'))
+
+
+@app.route('/news/')
+def news():
+    news = News_obj()
+    list_data = [news]
+    news.id = 1
+    news.title = "Заголовок новости"
+    news.intro = "Предисловие"
+    news.text = "Привет, мир! Как дела?"
+    news.author = "Ильдан"
+    news.date = "09.03.2022"
+    return render_template('news.html', list_data=list_data)
+
+
+@app.route('/create-news/', methods=['get', 'post'])
+def create_news():
+    return render_template('create-news.html')
 
 
 if __name__ == "__main__":
